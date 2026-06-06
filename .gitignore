@@ -1,0 +1,20 @@
+.gradle
+build/
+bin/
+./bin/
+.bin/
+.build/
+./build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+.vscode/settings.json

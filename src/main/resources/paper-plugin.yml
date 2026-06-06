@@ -1,0 +1,12 @@
+name: PaperWinterTemplate
+version: ${version}
+main: me.mapacheee.template.TemplatePlugin
+api-version: '1.21'
+description: A template plugin using the Winter Framework
+author: Mapacheee
+folia-supported: true
+dependencies:
+  server:
+    MapacheeeLib:
+      load: BEFORE
+      required: true
