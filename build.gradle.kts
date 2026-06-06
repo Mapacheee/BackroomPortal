@@ -10,10 +10,11 @@ java {
     }
 }
 
-group = "me.mapacheee.template"
+group = "me.mapacheee"
 version = "1.0.0-SNAPSHOT"
 
 repositories {
+    mavenLocal()
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
     maven("https://oss.sonatype.org/content/repositories/snapshots/")
@@ -34,6 +35,6 @@ tasks {
         }
     }
     shadowJar {
-        archiveFileName.set("PaperWinterTemplate-${project.version}.jar")
+        archiveFileName.set("CustomPortals-${project.version}.jar")
     }
 }

@@ -1,8 +1,8 @@
-name: PaperWinterTemplate
+name: CustomPortals
 version: ${version}
-main: me.mapacheee.template.TemplatePlugin
+main: me.mapacheee.customportals.CustomPortalsPlugin
 api-version: '1.21'
-description: A template plugin using the Winter Framework
+description: Portal a los Backrooms con efectos visuales
 author: Mapacheee
 folia-supported: true
 dependencies:

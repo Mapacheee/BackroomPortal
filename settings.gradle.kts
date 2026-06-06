@@ -1,1 +1,1 @@
-rootProject.name = "paperwinter-template"
+rootProject.name = "BackroomPortal"
