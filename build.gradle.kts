@@ -35,6 +35,6 @@ tasks {
         }
     }
     shadowJar {
-        archiveFileName.set("CustomPortals-${project.version}.jar")
+        archiveFileName.set("BackroomPortal-${project.version}.jar")
     }
 }
