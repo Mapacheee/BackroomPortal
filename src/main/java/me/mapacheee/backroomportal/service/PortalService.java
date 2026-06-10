@@ -9,12 +9,13 @@ import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import java.time.Duration;
 import java.util.*;
@@ -25,6 +26,7 @@ public class PortalService {
     private final Container<Messages> messages;
     private final Plugin plugin;
     private final Map<UUID, Location> playerOrigins = new HashMap<>();
+    private final Set<UUID> teleportingPlayers = new HashSet<>();
     private ActivePortal activePortal;
 
     @Inject
@@ -77,9 +79,12 @@ public class PortalService {
     }
 
     public void teleportToBackrooms(Player player) {
+        if (!teleportingPlayers.add(player.getUniqueId())) return;
+
         var cfg = config.get();
         var world = plugin.getServer().getWorld(cfg.destinationWorld());
         if (world == null) {
+            teleportingPlayers.remove(player.getUniqueId());
             player.sendMessage(MiniMessage.miniMessage().deserialize(
                 messages.get().worldNotAvailable()));
             return;
@@ -87,13 +92,15 @@ public class PortalService {
 
         playerOrigins.put(player.getUniqueId(), player.getLocation());
         var msg = messages.get();
+        var fadeTicks = cfg.transition().fadeTicks();
+
+        player.addPotionEffect(new PotionEffect(PotionEffectType.NAUSEA, fadeTicks * 2, 1, false, false, true));
 
         player.sendMessage(MiniMessage.miniMessage().deserialize(msg.teleportingToBackrooms()));
 
         var sound = Sound.sound(Key.key(cfg.transition().sound()), Sound.Source.AMBIENT, 1.0f, 1.0f);
         player.playSound(sound);
 
-        var fadeTicks = cfg.transition().fadeTicks();
         var title = Title.title(
             MiniMessage.miniMessage().deserialize(""),
             MiniMessage.miniMessage().deserialize(msg.teleportingToBackrooms()),
@@ -104,6 +111,7 @@ public class PortalService {
         new BukkitRunnable() {
             @Override
             public void run() {
+                teleportingPlayers.remove(player.getUniqueId());
                 var spawn = cfg.spawn();
                 var destination = new Location(
                     world, spawn.x(), spawn.y(), spawn.z(), spawn.yaw(), spawn.pitch()
@@ -240,6 +248,7 @@ public class PortalService {
 
     public void reload() {
         removePortal();
+        teleportingPlayers.clear();
         playerOrigins.clear();
     }
 }
