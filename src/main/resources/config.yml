@@ -1,5 +1,6 @@
 frame-block: "LODESTONE"
-frame-radius: 3
+min-frame-width: 2
+min-frame-height: 3
 portal-block: "NETHER_PORTAL"
 activation-items:
   - material: "ENDER_PEARL"
@@ -8,7 +9,7 @@ activation-items:
     amount: 1
   - material: "REDSTONE"
     amount: 1
-destination-world: "backrooms_level0"
+destination-world: "backroom_level0"
 spawn:
   x: 0.5
   y: 64
