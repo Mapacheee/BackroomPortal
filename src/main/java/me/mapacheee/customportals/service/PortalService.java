@@ -2,7 +2,6 @@ package me.mapacheee.customportals.service;
 
 import com.google.inject.Inject;
 import com.thewinterframework.configurate.Container;
-
 import me.mapacheee.customportals.config.Messages;
 import me.mapacheee.customportals.config.PluginConfig;
 import me.mapacheee.customportals.model.ActivePortal;
@@ -21,6 +20,8 @@ import java.time.Duration;
 import java.util.*;
 
 public class PortalService {
+
+    private static final int MAX_SEARCH = 10;
 
     private final Container<PluginConfig> config;
     private final Container<Messages> messages;
@@ -50,21 +51,19 @@ public class PortalService {
         var frameMaterial = Material.matchMaterial(cfg.frameBlock());
         if (frameMaterial == null || !frameMaterial.isBlock()) return Optional.empty();
 
-        var axisAndLocation = findFrameCenter(dropLocation, cfg.frameRadius(), frameMaterial);
-        if (axisAndLocation.isEmpty()) return Optional.empty();
+        var frameOpt = findRectangleFrame(dropLocation, frameMaterial);
+        if (frameOpt.isEmpty()) return Optional.empty();
 
-        var center = axisAndLocation.get().getKey();
-        var axis = axisAndLocation.get().getValue();
+        var frame = frameOpt.get();
 
         if (activePortal != null) {
-            if (activePortal.center().distance(center) < 3) return Optional.empty();
+            if (framesOverlap(frame, activePortal)) return Optional.empty();
             removePortal();
         }
 
-        var portal = new ActivePortal(center, cfg.frameRadius(), axis);
-        createPortalVisuals(portal);
-        activePortal = portal;
-        return Optional.of(portal);
+        createPortalVisuals(frame);
+        activePortal = frame;
+        return Optional.of(frame);
     }
 
     public boolean matchesActivationItems(Collection<org.bukkit.entity.Item> items) {
@@ -96,7 +95,6 @@ public class PortalService {
         }
 
         playerOrigins.put(player.getUniqueId(), player.getLocation());
-
         var msg = messages.get();
 
         player.sendMessage(MiniMessage.miniMessage().deserialize(msg.teleportingToBackrooms()));
@@ -138,76 +136,116 @@ public class PortalService {
         playerOrigins.remove(playerId);
     }
 
-    private Optional<Map.Entry<Location, ActivePortal.Axis>> findFrameCenter(
-        Location dropLocation, int radius, Material frameMaterial
-    ) {
-        var world = dropLocation.getWorld();
+    public boolean isInsidePortal(Location location, ActivePortal portal) {
+        int x = location.getBlockX();
+        int y = location.getBlockY();
+        int z = location.getBlockZ();
+
+        if (portal.axis() == ActivePortal.Axis.X_Y) {
+            return z == portal.z()
+                && x > portal.minX() && x < portal.maxX()
+                && y >= portal.minY() && y <= portal.maxY();
+        } else {
+            return x == portal.z()
+                && z > portal.minX() && z < portal.maxX()
+                && y >= portal.minY() && y <= portal.maxY();
+        }
+    }
+
+    private Optional<ActivePortal> findRectangleFrame(Location dropLocation, Material frameMaterial) {
+        var cfg = config.get();
         int cx = dropLocation.getBlockX();
         int cy = dropLocation.getBlockY();
         int cz = dropLocation.getBlockZ();
+        var world = dropLocation.getWorld();
 
-        var xyCenter = checkPlane(world, cx, cy, cz, radius, frameMaterial, true);
-        if (xyCenter.isPresent()) {
-            return Optional.of(new AbstractMap.SimpleEntry<>(xyCenter.get(), ActivePortal.Axis.X_Y));
+        var xyFrame = findFrameInPlane(world, cx, cy, cz, frameMaterial, true,
+            cfg.minFrameWidth(), cfg.minFrameHeight());
+        if (xyFrame.isPresent()) return xyFrame;
+
+        return findFrameInPlane(world, cx, cy, cz, frameMaterial, false,
+            cfg.minFrameWidth(), cfg.minFrameHeight());
+    }
+
+    private Optional<ActivePortal> findFrameInPlane(World world, int cx, int cy, int cz,
+                                                     Material frameMaterial, boolean xyPlane,
+                                                     int minWidth, int minHeight) {
+        int fx = cx, fy = cy, fz = cz;
+
+        int aMin, aMax, bMin, bMax;
+        Block searchBlock;
+
+        aMin = cx;
+        for (int x = cx; x >= cx - MAX_SEARCH; x--) {
+            searchBlock = xyPlane ? world.getBlockAt(x, cy, cz) : world.getBlockAt(cx, cy, x);
+            if (searchBlock.getType() == frameMaterial) { aMin = x; break; }
         }
 
-        var zyCenter = checkPlane(world, cx, cy, cz, radius, frameMaterial, false);
-        return zyCenter.map(location -> new AbstractMap.SimpleEntry<>(location, ActivePortal.Axis.Z_Y));
+        aMax = cx;
+        for (int x = cx; x <= cx + MAX_SEARCH; x++) {
+            searchBlock = xyPlane ? world.getBlockAt(x, cy, cz) : world.getBlockAt(cx, cy, x);
+            if (searchBlock.getType() == frameMaterial) { aMax = x; break; }
+        }
 
+        bMin = cy;
+        for (int y = cy; y >= cy - MAX_SEARCH; y--) {
+            searchBlock = world.getBlockAt(xyPlane ? aMin : fx, y, xyPlane ? fz : aMin);
+            if (searchBlock.getType() == frameMaterial) { bMin = y; break; }
+        }
+
+        bMax = cy;
+        for (int y = cy; y <= cy + MAX_SEARCH; y++) {
+            searchBlock = world.getBlockAt(xyPlane ? aMin : fx, y, xyPlane ? fz : aMin);
+            if (searchBlock.getType() == frameMaterial) { bMax = y; break; }
+        }
+
+        int interiorWidth = aMax - aMin - 1;
+        int interiorHeight = bMax - bMin - 1;
+        if (interiorWidth < minWidth || interiorHeight < minHeight) return Optional.empty();
+
+        var valid = validateFrame(world, aMin, aMax, bMin, bMax,
+            xyPlane ? cz : cx, frameMaterial, xyPlane);
+        if (!valid) return Optional.empty();
+
+        int centerX = xyPlane ? (aMin + aMax) / 2 : fx;
+        int centerY = (bMin + bMax) / 2;
+        int centerZ = xyPlane ? fz : (aMin + aMax) / 2;
+        var center = new Location(world, centerX + 0.5, centerY + 0.5, centerZ + 0.5);
+
+        var axis = xyPlane ? ActivePortal.Axis.X_Y : ActivePortal.Axis.Z_Y;
+        return Optional.of(new ActivePortal(center, aMin, aMax, bMin, bMax,
+            xyPlane ? cz : cx, axis));
     }
 
-    private Optional<Location> checkPlane(World world, int cx, int cy, int cz, int radius,
-                                           Material frameMaterial, boolean xyPlane) {
-        var outlineOk = checkCircleOutline(world, cx, cy, cz, radius, frameMaterial, xyPlane);
-        if (!outlineOk) return Optional.empty();
-
-        var interiorOk = checkCircleInterior(world, cx, cy, cz, radius, xyPlane);
-        if (!interiorOk) return Optional.empty();
-
-        return Optional.of(new Location(world, cx + 0.5, cy + 0.5, cz + 0.5));
-    }
-
-    private boolean checkCircleOutline(World world, int cx, int cy, int cz, int radius,
-                                       Material frameMaterial, boolean xyPlane) {
-        double outerR = radius + 0.5;
-        double innerR = radius - 0.5;
-
-        for (int a = -radius - 1; a <= radius + 1; a++) {
-            for (int b = -radius - 1; b <= radius + 1; b++) {
-                double dist = Math.sqrt(a * a + b * b);
-                if (dist < innerR || dist > outerR) continue;
-
-                Block block;
-                if (xyPlane) {
-                    block = world.getBlockAt(cx + a, cy + b, cz);
-                } else {
-                    block = world.getBlockAt(cx, cy + b, cz + a);
-                }
+    private boolean validateFrame(World world, int aMin, int aMax, int bMin, int bMax,
+                                  int fixed, Material frameMaterial, boolean xyPlane) {
+        for (int a = aMin; a <= aMax; a++) {
+            for (int b : new int[]{bMin, bMax}) {
+                Block block = xyPlane ? world.getBlockAt(a, b, fixed) : world.getBlockAt(fixed, b, a);
                 if (block.getType() != frameMaterial) return false;
             }
         }
-        return true;
-    }
 
-    private boolean checkCircleInterior(World world, int cx, int cy, int cz, int radius,
-                                        boolean xyPlane) {
-        double innerR = radius - 1.5;
+        for (int b = bMin + 1; b < bMax; b++) {
+            for (int a : new int[]{aMin, aMax}) {
+                Block block = xyPlane ? world.getBlockAt(a, b, fixed) : world.getBlockAt(fixed, b, a);
+                if (block.getType() != frameMaterial) return false;
+            }
+        }
 
-        for (int a = -(radius - 1); a <= radius - 1; a++) {
-            for (int b = -(radius - 1); b <= radius - 1; b++) {
-                double dist = Math.sqrt(a * a + b * b);
-                if (dist >= innerR) continue;
-
-                Block block;
-                if (xyPlane) {
-                    block = world.getBlockAt(cx + a, cy + b, cz);
-                } else {
-                    block = world.getBlockAt(cx, cy + b, cz + a);
-                }
+        for (int a = aMin + 1; a < aMax; a++) {
+            for (int b = bMin + 1; b < bMax; b++) {
+                Block block = xyPlane ? world.getBlockAt(a, b, fixed) : world.getBlockAt(fixed, b, a);
                 if (!block.getType().isAir()) return false;
             }
         }
+
         return true;
+    }
+
+    private boolean framesOverlap(ActivePortal a, ActivePortal b) {
+        return a.center().getWorld().equals(b.center().getWorld())
+            && a.center().distance(b.center()) < 5;
     }
 
     private void createPortalVisuals(ActivePortal portal) {
@@ -215,26 +253,14 @@ public class PortalService {
         var portalMat = Material.matchMaterial(cfg.portalBlock());
         if (portalMat == null) portalMat = Material.NETHER_PORTAL;
 
-        var center = portal.center();
-        var world = center.getWorld();
-        int cx = center.getBlockX();
-        int cy = center.getBlockY();
-        int cz = center.getBlockZ();
-        int r = portal.radius();
+        var world = portal.center().getWorld();
         boolean xyPlane = portal.axis() == ActivePortal.Axis.X_Y;
 
-        double fillR = r - 1.0;
-        for (int a = -(r - 1); a <= r - 1; a++) {
-            for (int b = -(r - 1); b <= r - 1; b++) {
-                double dist = Math.sqrt(a * a + b * b);
-                if (dist >= fillR) continue;
-
-                Block block;
-                if (xyPlane) {
-                    block = world.getBlockAt(cx + a, cy + b, cz);
-                } else {
-                    block = world.getBlockAt(cx, cy + b, cz + a);
-                }
+        for (int a = portal.minX() + 1; a < portal.maxX(); a++) {
+            for (int b = portal.minY() + 1; b < portal.maxY(); b++) {
+                Block block = xyPlane
+                    ? world.getBlockAt(a, b, portal.z())
+                    : world.getBlockAt(portal.z(), b, a);
                 if (block.getType().isAir()) {
                     block.setType(portalMat);
                 }
@@ -246,15 +272,12 @@ public class PortalService {
 
     private void startParticleEffect(ActivePortal portal) {
         var cfg = config.get();
-        var particleName = cfg.particle().type();
+        var particle = org.bukkit.Particle.valueOf(cfg.particle().type());
         var count = cfg.particle().count();
-        var speed = cfg.particle().speed();
-
-        var particle = org.bukkit.Particle.valueOf(particleName);
 
         new BukkitRunnable() {
             final ActivePortal targetPortal = portal;
-            double angle = 0;
+            double phase = 0;
 
             @Override
             public void run() {
@@ -263,53 +286,45 @@ public class PortalService {
                     return;
                 }
 
-                var center = targetPortal.center();
-                var world = center.getWorld();
-                int r = targetPortal.radius();
-                double portalR = r * 0.7;
+                var world = targetPortal.center().getWorld();
                 boolean xyPlane = targetPortal.axis() == ActivePortal.Axis.X_Y;
+                int cx = (targetPortal.minX() + targetPortal.maxX()) / 2;
+                int cy = (targetPortal.minY() + targetPortal.maxY()) / 2;
+                int halfW = targetPortal.width() / 2;
+                int halfH = targetPortal.height() / 2;
 
-                angle += 0.15;
+                phase += 0.15;
                 for (int i = 0; i < 3; i++) {
-                    double a = angle + (i * 2 * Math.PI / 3);
-                    double px = center.getX() + portalR * Math.cos(a);
-                    double py = center.getY() + portalR * Math.sin(a * 0.7);
-                    double pz;
+                    double angle = phase + (i * 2 * Math.PI / 3);
+                    int a = (int) (Math.cos(angle) * halfW);
+                    int b = (int) (Math.sin(angle) * halfH + halfH * 0.5 * Math.sin(angle * 0.5));
+                    double px, py, pz;
 
                     if (xyPlane) {
-                        pz = center.getZ();
+                        px = cx + a + 0.5;
+                        py = cy + b + 0.5;
+                        pz = targetPortal.z() + 0.5;
                     } else {
-                        pz = center.getZ() + portalR * Math.cos(a);
-                        px = center.getX();
+                        px = targetPortal.z() + 0.5;
+                        py = cy + b + 0.5;
+                        pz = cx + a + 0.5;
                     }
 
-                    world.spawnParticle(particle, px, py, pz, count / 3, 0.3, 0.3, 0.3, speed);
+                    world.spawnParticle(particle, px, py, pz, count / 3, 0.3, 0.3, 0.3, 0.02);
                 }
             }
         }.runTaskTimer(plugin, 0, 2);
     }
 
     private void removePortalVisuals(ActivePortal portal) {
-        var center = portal.center();
-        var world = center.getWorld();
-        int cx = center.getBlockX();
-        int cy = center.getBlockY();
-        int cz = center.getBlockZ();
-        int r = portal.radius();
+        var world = portal.center().getWorld();
         boolean xyPlane = portal.axis() == ActivePortal.Axis.X_Y;
 
-        double fillR = r - 1.0;
-        for (int a = -(r - 1); a <= r - 1; a++) {
-            for (int b = -(r - 1); b <= r - 1; b++) {
-                double dist = Math.sqrt(a * a + b * b);
-                if (dist >= fillR) continue;
-
-                Block block;
-                if (xyPlane) {
-                    block = world.getBlockAt(cx + a, cy + b, cz);
-                } else {
-                    block = world.getBlockAt(cx, cy + b, cz + a);
-                }
+        for (int a = portal.minX() + 1; a < portal.maxX(); a++) {
+            for (int b = portal.minY() + 1; b < portal.maxY(); b++) {
+                Block block = xyPlane
+                    ? world.getBlockAt(a, b, portal.z())
+                    : world.getBlockAt(portal.z(), b, a);
                 block.setType(Material.AIR);
             }
         }

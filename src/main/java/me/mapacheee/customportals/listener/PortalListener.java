@@ -4,7 +4,6 @@ import com.google.inject.Inject;
 import com.thewinterframework.configurate.Container;
 import com.thewinterframework.paper.listener.ListenerComponent;
 import me.mapacheee.customportals.config.Messages;
-import me.mapacheee.customportals.model.ActivePortal;
 import me.mapacheee.customportals.service.PortalService;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Item;
@@ -12,7 +11,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
-import java.util.Collection;
 import java.util.ArrayList;
 
 @ListenerComponent
@@ -60,16 +58,13 @@ public class PortalListener implements Listener {
     public void onPlayerMove(PlayerMoveEvent event) {
         var player = event.getPlayer();
         var to = event.getTo();
+        if (to == null) return;
 
         var portalOpt = portalService.getActivePortal();
         if (portalOpt.isEmpty()) return;
 
         var portal = portalOpt.get();
-        var portalCenter = portal.center();
-        double distance = to.distance(portalCenter);
-        int radius = portal.radius();
-
-        if (distance < radius * 0.5) {
+        if (portalService.isInsidePortal(to, portal)) {
             portalService.teleportToBackrooms(player);
         }
     }

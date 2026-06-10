@@ -8,7 +8,8 @@ import java.util.List;
 @Configurate("config")
 public record PluginConfig(
     String frameBlock,
-    int frameRadius,
+    int minFrameWidth,
+    int minFrameHeight,
     List<ActivationItem> activationItems,
     String portalBlock,
     String destinationWorld,
