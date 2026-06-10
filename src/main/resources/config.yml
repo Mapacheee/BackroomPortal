@@ -1,25 +1,13 @@
-frame-block: "LODESTONE"
-min-frame-width: 2
-min-frame-height: 3
-portal-block: "NETHER_PORTAL"
-activation-items:
-  - material: "ENDER_PEARL"
-    amount: 1
-  - material: "BONE"
-    amount: 1
-  - material: "REDSTONE"
-    amount: 1
-destination-world: "backroom_level0"
+catalyst-item: "ENDER_EYE"
+portal-width: 3
+portal-height: 4
+destination-world: "backrooms_level0"
 spawn:
   x: 0.5
   y: 64
   z: 0.5
   yaw: 0.0
   pitch: 0.0
-particle:
-  type: "PORTAL"
-  count: 100
-  speed: 0.3
 transition:
   fade-ticks: 40
   sound: "block.end_portal.spawn"

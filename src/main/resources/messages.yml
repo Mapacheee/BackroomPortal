@@ -1,6 +1,6 @@
 portal-activated: "<gradient:dark_purple:light_purple>✦ Portal activated!</gradient>"
 portal-already-active: "<red>A portal is already active here</red>"
-invalid-frame: "<red>The portal frame is invalid. Build a circle of the required blocks around it.</red>"
+invalid-frame: "<red>The portal frame is invalid. Build a rectangular frame (like a Nether portal) with the required blocks.</red>"
 teleporting-to-backrooms: "<dark_gray>The world around you distorts...</dark_gray>"
 backrooms-arrival: "<yellow>You have entered the Backrooms...</yellow>"
 not-in-backrooms: "<red>You are not in the Backrooms</red>"
