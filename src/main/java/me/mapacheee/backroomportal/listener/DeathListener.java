@@ -1,11 +1,11 @@
-package me.mapacheee.customportals.listener;
+package me.mapacheee.backroomportal.listener;
 
 import com.google.inject.Inject;
 import com.thewinterframework.configurate.Container;
 import com.thewinterframework.paper.listener.ListenerComponent;
-import me.mapacheee.customportals.config.Messages;
-import me.mapacheee.customportals.config.PluginConfig;
-import me.mapacheee.customportals.service.PortalService;
+import me.mapacheee.backroomportal.config.Messages;
+import me.mapacheee.backroomportal.config.PluginConfig;
+import me.mapacheee.backroomportal.service.PortalService;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;

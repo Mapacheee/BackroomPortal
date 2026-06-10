@@ -1,4 +1,4 @@
-package me.mapacheee.customportals.model;
+package me.mapacheee.backroomportal.model;
 
 import org.bukkit.Location;
 

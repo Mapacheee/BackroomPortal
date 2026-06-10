@@ -1,11 +1,11 @@
-package me.mapacheee.customportals.command;
+package me.mapacheee.backroomportal.command;
 
 import com.google.inject.Inject;
 import com.thewinterframework.command.CommandComponent;
 import com.thewinterframework.configurate.Container;
 import com.thewinterframework.service.ReloadServiceManager;
-import me.mapacheee.customportals.config.Messages;
-import me.mapacheee.customportals.service.PortalService;
+import me.mapacheee.backroomportal.config.Messages;
+import me.mapacheee.backroomportal.service.PortalService;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 import org.incendo.cloud.annotations.Command;

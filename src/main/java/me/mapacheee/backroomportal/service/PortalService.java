@@ -1,10 +1,10 @@
-package me.mapacheee.customportals.service;
+package me.mapacheee.backroomportal.service;
 
 import com.google.inject.Inject;
 import com.thewinterframework.configurate.Container;
-import me.mapacheee.customportals.config.Messages;
-import me.mapacheee.customportals.config.PluginConfig;
-import me.mapacheee.customportals.model.ActivePortal;
+import me.mapacheee.backroomportal.config.Messages;
+import me.mapacheee.backroomportal.config.PluginConfig;
+import me.mapacheee.backroomportal.model.ActivePortal;
 import net.kyori.adventure.key.Key;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.minimessage.MiniMessage;

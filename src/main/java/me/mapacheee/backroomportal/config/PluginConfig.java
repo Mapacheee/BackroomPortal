@@ -1,4 +1,4 @@
-package me.mapacheee.customportals.config;
+package me.mapacheee.backroomportal.config;
 
 import com.thewinterframework.configurate.config.Configurate;
 import org.spongepowered.configurate.objectmapping.ConfigSerializable;

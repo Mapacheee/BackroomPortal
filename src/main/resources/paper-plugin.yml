@@ -1,6 +1,6 @@
 name: BackroomPortal
 version: ${version}
-main: me.mapacheee.customportals.CustomPortalsPlugin
+main: me.mapacheee.backroomportal.BackroomPortalPlugin
 api-version: '1.21'
 description: Portal to backrooms
 author: Mapacheee
